@@ -17,12 +17,12 @@ void _test_run(char *name, void (*fun)())
 
 	_test.ntests = 0;
 	_test.npassed = 0;
-	printf("\n\033[1mRunning %s:\033[0m\n\n", name);
+	printf("\n" COLOR_BOLD "Running %s:" COLOR_RESET "\n\n", name);
 	int starttime = clock();
 	(*fun)();
 	_test_done();
 	int msec = (clock() - starttime) * 1000 / CLOCKS_PER_SEC;
-	printf("\n\033[1mPassed %i/%i tests (%dms).\033[0m\n\n",
+	printf("\n" COLOR_BOLD "Passed %i/%i tests (%dms)." COLOR_RESET "\n\n",
 		_test.npassed, _test.ntests, msec);
 }
 
