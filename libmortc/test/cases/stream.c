@@ -12,6 +12,8 @@ void test_stream()
 		asserteq(STREAM_CHAR_LOOKAHEAD, 2);
 		asserteq(s.nextchar[0], 'a');
 		asserteq(s.nextchar[1], 'f');
+
+		m_stream_free(&s);
 	}
 
 	it("reads in files") {
@@ -24,5 +26,23 @@ void test_stream()
 		asserteq(s.nextchar[1], 'f');
 
 		fclose(f);
+		m_stream_free(&s);
+	}
+
+	it("parses some basic tokens") {
+		char *str = "\"hello\" ()";
+		m_stream s;
+		m_stream_init_str(&s, str);
+
+		asserteq(s.token->type, TOKEN_TYPE_STRING);
+		assertstr(s.token->content.str, "hello");
+		m_stream_read_token(&s);
+		asserteq(s.token->type, TOKEN_TYPE_OPENPAREN);
+		m_stream_read_token(&s);
+		asserteq(s.token->type, TOKEN_TYPE_CLOSEPAREN);
+		m_stream_read_token(&s);
+		asserteq(s.token->type, TOKEN_TYPE_EOF);
+
+		m_stream_free(&s);
 	}
 }

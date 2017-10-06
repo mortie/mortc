@@ -7,11 +7,11 @@ HDR = $(shell find include -name '*.h')
 CFLAGS ?= -g
 
 libmortc.so: $(OBJ) $(HDR)
-	$(CC) -shared -Iinclude -o $@ $(OBJ)
+	$(CC) -shared -fPIC -Iinclude -o $@ $(OBJ)
 
 obj/%.o: src/%.c $(HDR)
 	@mkdir -p $(dir $@)
-	$(CC) -c -Iinclude $(CFLAGS) -o $@ $<
+	$(CC) -c -fPIC -Iinclude $(CFLAGS) -o $@ $<
 
 install:
 	cp libmortc.so $(PREFIX)/lib/$(TARGET)
