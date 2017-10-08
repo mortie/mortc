@@ -4,19 +4,14 @@ HDR = $(shell find . -name '*.h')
 
 CFLAGS ?= -g -Wall -Wextra -Wpedantic -Werror
 FLAGS = $(CFLAGS) -I../include -Isrc
-LINK = -L.. -lmortc -Wl,-rpath -Wl,..
-
-VFLAGS ?= --leak-check=full --show-leak-kinds=all
+LINK = -L.. -Wl,-rpath -Wl,.. -lmortc
 
 test: $(OBJ) $(HDR) ../libmortc.so
-	$(CC) $(FLAGS) $(LINK) -o $@ $(OBJ)
+	$(CC) $(FLAGS) -o $@ $(OBJ) $(LINK)
 
 obj/%.o: %.c $(HDR)
 	@mkdir -p $(dir $@)
 	$(CC) -c $(FLAGS) -o $@ $<
-
-run: test
-	valgrind --quiet $(VFLAGS) ./test
 
 clean:
 	rm -f test

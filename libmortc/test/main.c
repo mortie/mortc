@@ -6,5 +6,5 @@ int main()
 {
 	run(test_stream);
 
-	return 0;
+	return test_exit_status;
 }

@@ -8,6 +8,8 @@
 
 struct test _test;
 
+int test_exit_status = 0;
+
 void _test_run(char *name, void (*fun)())
 {
 	_test.done = 1;
@@ -45,7 +47,7 @@ void _test_done()
 	printf("\n");
 }
 
-void fail(char *comment)
+void _test_fail(char *comment)
 {
 	if (_test.done)
 		return;
@@ -59,4 +61,6 @@ void fail(char *comment)
 		COLOR_RESET COLOR_DESC "%s: "
 		COLOR_RESET "%s\n", _test.description, comment);
 	printf("    at %s:%i\n", _test.file, _test.line);
+
+	test_exit_status = 1;
 }

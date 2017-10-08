@@ -18,11 +18,12 @@ install:
 	cp -r include/mortc $(PREFIX)/include
 
 test: libmortc.so
-	$(MAKE) --no-print-directory -C test run
+	@$(MAKE) -C test >/dev/null
+	cd test && valgrind --quiet --leak-check=full --show-leak-kinds=all ./test
 
 clean:
 	rm -f libmortc.so
 	rm -rf obj
-	$(MAKE) -C test clean
+	$(MAKE) -C test clean 2>&1
 
 .PHONY: install test clean

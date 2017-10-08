@@ -37,7 +37,9 @@ extern struct test {
 	clock_t starttime;
 } _test;
 
-void fail(char *comment);
+extern int test_exit_status;
+
+void _test_fail(char *comment);
 void _test_done();
 
 void _test_run(char *name, void (*fun)());
@@ -51,6 +53,12 @@ void _test_run(char *name, void (*fun)());
 	_test.done = 0;
 
 #define run(name) _test_run(#name, &name)
+
+#define fail(x) \
+	do { \
+		_test.line = __LINE__; \
+		_test_fail(x); \
+	} while (0)
 
 #define assert(x) \
 	do { \
@@ -72,5 +80,6 @@ void _test_run(char *name, void (*fun)());
 			fail("Expected " #a " to equal " #b); \
 		} \
 	} while (0)
+
 
 #endif
