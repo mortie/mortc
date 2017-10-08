@@ -40,6 +40,8 @@ typedef struct m_token
 	int refs;
 } m_token;
 
+const char *m_token_type_name(m_token_type type);
+
 void m_token_init(m_token *tok);
 void m_token_set_content(m_token *tok, const char *content, size_t len);
 void m_token_ref(m_token *tok);

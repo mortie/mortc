@@ -82,19 +82,21 @@ void _test_run(char *name, void (*fun)());
 
 #define assertstr(a, b) \
 	do { \
-		if ((a) == NULL) {\
+		char *str = (a); \
+		if (str == NULL) {\
 			fail("Expected " #a " to equal " #b ", got NULL"); \
-		} else if (strcmp((a), (b)) != 0) { \
+		} else if (strcmp(str, (b)) != 0) { \
 			fail("Expected " #a " to equal " #b \
-				", got '%s'", (a)); \
+				", got '%s'", str); \
 		} \
 	} while (0)
 
-#define asserteq(a, b) \
+#define assertint(a, b) \
 	do { \
-		if ((a) != (b)) { \
+		int num = (a); \
+		if (num != (b)) { \
 			fail("Expected " #a " to equal " #b \
-				", got %i", (int)(a)); \
+				", got %i", num); \
 		} \
 	} while (0)
 

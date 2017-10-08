@@ -3,6 +3,13 @@
 #include <string.h>
 #include <ctype.h>
 
+#define ERRORSTART(tok) \
+	fprintf(stderr, "Error: %i:%i: ", (tok)->line, (tok)->column);
+#define ERRORCONT(...) \
+	fprintf(stderr, __VA_ARGS__)
+#define ERROREND() \
+	fprintf(stderr, "\n")
+
 static int stream_read_char(m_stream *stream)
 {
 	if (stream->nextchar[0] == EOF)
@@ -270,7 +277,11 @@ void m_stream_read_token(m_stream *stream)
 	m_token nxt;
 	stream_read_single_token(stream, &nxt);
 	if (nxt.type == TOKEN_TYPE_ERROR)
-		fprintf(stderr, "Error: %s\n", nxt.content.str);
+	{
+		ERRORSTART(&nxt);
+		ERRORCONT("%s", nxt.content.str);
+		ERROREND();
+	}
 
 	m_token_unref(&stream->nexttoken[0]);
 	for (int i = STREAM_TOKEN_LOOKAHEAD - 2; i >= 0; --i)
@@ -288,6 +299,56 @@ int m_stream_skip(m_stream *stream, m_token_type type)
 	}
 	else
 	{
+		ERRORSTART(stream->token);
+		ERRORCONT("Got %s token, expected %s token.",
+			m_token_type_name(type),
+			m_token_type_name(stream->token->type));
+		ERROREND();
+		return -1;
+	}
+}
+
+void m_stream_optional(m_stream *stream, m_token_type type)
+{
+	if (stream->token->type == type)
+		m_stream_read_token(stream);
+}
+
+int m_stream_skip_any(m_stream *stream, m_token_type types[])
+{
+	int valid = 0;
+	m_token_type *t = types;
+	while (*t != 0)
+	{
+		if (stream->token->type == *t)
+		{
+			valid = 1;
+			break;
+		}
+		t += 1;
+	}
+
+	if (valid)
+	{
+		m_stream_read_token(stream);
+		return 0;
+	}
+	else
+	{
+		ERRORSTART(stream->token);
+		ERRORCONT("Got %s token, expected one of ",
+			m_token_type_name(stream->token->type));
+		t = types;
+		while (*t != 0)
+		{
+			if (t == types)
+				ERRORCONT("%s token",
+					m_token_type_name(*t));
+			else
+				ERRORCONT(", %s token",
+					m_token_type_name(*t));
+			t += 1;
+		}
 		return -1;
 	}
 }
