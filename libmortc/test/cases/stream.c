@@ -9,9 +9,8 @@ void test_stream()
 		m_stream s;
 		m_stream_init_str(&s, "afternoon");
 
-		asserteq(STREAM_CHAR_LOOKAHEAD, 2);
-		asserteq(s.nextchar[0], 'a');
-		asserteq(s.nextchar[1], 'f');
+		asserteq(s.token->type, TOKEN_TYPE_NAME);
+		assertstr(s.token->content.str, "afternoon");
 
 		m_stream_free(&s);
 	}
@@ -21,25 +20,31 @@ void test_stream()
 		FILE *f = fopen("assets/stream_1", "r");
 		m_stream_init_file(&s, f);
 
-		asserteq(STREAM_CHAR_LOOKAHEAD, 2);
-		asserteq(s.nextchar[0], 'a');
-		asserteq(s.nextchar[1], 'f');
+		asserteq(s.token->type, TOKEN_TYPE_NAME);
+		assertstr(s.token->content.str, "afternoon");
 
 		fclose(f);
 		m_stream_free(&s);
 	}
 
-	it("parses some basic tokens") {
-		char *str = "\"hello\" ()";
+	it("reads a string of tokens") {
+		char *str = "\"hello\" () whats-up";
 		m_stream s;
 		m_stream_init_str(&s, str);
 
 		asserteq(s.token->type, TOKEN_TYPE_STRING);
 		assertstr(s.token->content.str, "hello");
+
 		m_stream_read_token(&s);
 		asserteq(s.token->type, TOKEN_TYPE_OPENPAREN);
+
 		m_stream_read_token(&s);
 		asserteq(s.token->type, TOKEN_TYPE_CLOSEPAREN);
+
+		m_stream_read_token(&s);
+		asserteq(s.token->type, TOKEN_TYPE_NAME);
+		assertstr(s.token->content.str, "whats-up");
+
 		m_stream_read_token(&s);
 		asserteq(s.token->type, TOKEN_TYPE_EOF);
 

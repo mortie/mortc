@@ -41,6 +41,7 @@ static void stream_read_single_token(m_stream *stream, m_token *tok)
 #define chartok(c, t) if (ch == c) \
 	{ tok->type = t; stream_read_char(stream); return; }
 	chartok(EOF, TOKEN_TYPE_EOF)
+	chartok('.', TOKEN_TYPE_PERIOD)
 	chartok(',', TOKEN_TYPE_COMMA)
 	chartok('(', TOKEN_TYPE_OPENPAREN)
 	chartok(')', TOKEN_TYPE_CLOSEPAREN)
@@ -106,8 +107,8 @@ static void stream_read_single_token(m_stream *stream, m_token *tok)
 	{
 		char *buf = stream->tmpbuf;
 		size_t buflen = sizeof(stream->tmpbuf);
-
 		int length = 0;
+
 		ch = stream_read_char(stream);
 		while (ch != '"' && ch != EOF)
 		{
@@ -143,7 +144,84 @@ static void stream_read_single_token(m_stream *stream, m_token *tok)
 		return;
 	}
 
-	tok->type = TOKEN_TYPE_NONE;
+	// Number
+	if (isdigit(ch))
+	{
+		char *buf = stream->tmpbuf;
+		size_t buflen = sizeof(stream->tmpbuf);
+		int length = 0;
+
+		int haspoint = 0;
+		do
+		{
+			if (length >= buflen)
+			{
+				buflen *= 2;
+				if (buf == stream->tmpbuf)
+					buf = malloc(buflen);
+				else
+					buf = realloc(buf, buflen);
+			}
+
+			if (ch == '.')
+				haspoint = 1;
+
+			buf[length++] = ch;
+			ch = stream_read_char(stream);
+		} while (isdigit(ch) || (ch == '.' && !haspoint));
+
+		tok->type = TOKEN_TYPE_NUMBER;
+		m_token_set_content(tok, buf, length);
+		if (buf != stream->tmpbuf)
+			free(buf);
+
+		return;
+	}
+
+	// Name
+	if (!isspace(ch) && ch != EOF &&
+			ch != '(' && ch != ')' &&
+			ch != '[' && ch != ']' &&
+			ch != '{' && ch != '}' &&
+			ch != ',' && ch != '.' &&
+			ch != '"')
+	{
+		char *buf = stream->tmpbuf;
+		size_t buflen = sizeof(stream->tmpbuf);
+		int length = 0;
+
+		do
+		{
+			if (length >= buflen)
+			{
+				buflen *= 2;
+				if (buf == stream->tmpbuf)
+					buf = malloc(buflen);
+				else
+					buf = realloc(buf, buflen);
+			}
+
+			buf[length++] = ch;
+			ch = stream_read_char(stream);
+		} while (!isspace(ch) && ch != EOF &&
+				ch != '(' && ch != ')' &&
+				ch != '[' && ch != ']' &&
+				ch != '{' && ch != '}' &&
+				ch != ',' && ch != '.' &&
+				ch != '"');
+
+		tok->type = TOKEN_TYPE_NAME;
+		m_token_set_content(tok, buf, length);
+		if (buf != stream->tmpbuf)
+			free(buf);
+
+		return;
+	}
+
+	tok->type = TOKEN_TYPE_ERROR;
+	char err[] = "Unexpected character: 'x'";
+	err[sizeof(err) - 3] = ch;
+	m_token_set_content(tok, err, sizeof(err));
 }
 
 static void stream_init(m_stream *stream)
@@ -191,10 +269,25 @@ void m_stream_read_token(m_stream *stream)
 {
 	m_token nxt;
 	stream_read_single_token(stream, &nxt);
+	if (nxt.type == TOKEN_TYPE_ERROR)
+		fprintf(stderr, "Error: %s\n", nxt.content.str);
 
 	m_token_unref(&stream->nexttoken[0]);
 	for (int i = STREAM_TOKEN_LOOKAHEAD - 2; i >= 0; --i)
 		stream->nexttoken[i] = stream->nexttoken[i + 1];
 	stream->nexttoken[STREAM_CHAR_LOOKAHEAD - 1] = nxt;
 	stream->token = &stream->nexttoken[0];;
+}
+
+int m_stream_skip(m_stream *stream, m_token_type type)
+{
+	if (stream->token->type == type)
+	{
+		m_stream_read_token(stream);
+		return 0;
+	}
+	else
+	{
+		return -1;
+	}
 }

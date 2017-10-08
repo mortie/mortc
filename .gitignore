@@ -1,6 +1,6 @@
-mortc
-obj
-dep
+./mortc
+obj/
+dep/
 libmortc/libmortc.so
 libmortc/obj
 libmortc/test/test
