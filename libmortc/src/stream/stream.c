@@ -3,6 +3,73 @@
 #include <string.h>
 #include <ctype.h>
 
+#define ERRORSTART(tok) \
+	fprintf(stderr, "Error: %i:%i: ", (tok)->line, (tok)->column);
+#define ERRORCONT(...) \
+	fprintf(stderr, __VA_ARGS__)
+#define ERROREND() \
+	fprintf(stderr, "\n")
+
+/*
+ * strvec is a utility structure for dynamically growing strings
+ */
+struct strvec
+{
+	char *vec;
+	size_t size;
+	size_t length;
+};
+static void strvec_init(struct strvec *str)
+{
+	str->vec = NULL;
+	str->size = 0;
+	str->length = 0;
+}
+static void strvec_append(struct strvec *str, char c)
+{
+	str->length += 1;
+	if (str->length >= str->size)
+	{
+		if (str->size == 0)
+			str->size = 512;
+		else
+			str->size *= 2;
+
+		str->vec = realloc(str->vec, str->size);
+	}
+
+	str->vec[str->length - 1] = c;
+	str->vec[str->length] = '\0';
+}
+
+static int isname(int ch)
+{
+	return !isspace(ch) && ch != EOF &&
+		ch != '(' && ch != ')' &&
+		ch != '[' && ch != ']' &&
+		ch != '{' && ch != '}' &&
+		ch != ',' && ch != '.' &&
+		ch != '"';
+}
+
+static void stream_allocs_append(m_stream *stream, void *ptr)
+{
+	stream->allocs.length += 1;
+	if (stream->allocs.length > stream->allocs.size)
+	{
+		if (stream->allocs.size == 0)
+			stream->allocs.size = 512;
+		else
+			stream->allocs.size *= 2;
+
+		stream->allocs.vec = realloc(
+			stream->allocs.vec,
+			sizeof(*stream->allocs.vec) * stream->allocs.size);
+	}
+
+	stream->allocs.vec[stream->allocs.length - 1] = ptr;
+}
+
 static int stream_read_char(m_stream *stream)
 {
 	if (stream->nextchar[0] == EOF)
@@ -32,7 +99,8 @@ static int stream_read_char(m_stream *stream)
 static void stream_read_single_token(m_stream *stream, m_token *tok)
 {
 	m_token_init(tok);
-	m_token_ref(tok);
+
+	struct strvec strvec;
 
 	int ch = stream->nextchar[0];
 	tok->line = stream->line;
@@ -41,6 +109,7 @@ static void stream_read_single_token(m_stream *stream, m_token *tok)
 #define chartok(c, t) if (ch == c) \
 	{ tok->type = t; stream_read_char(stream); return; }
 	chartok(EOF, TOKEN_TYPE_EOF)
+	chartok('.', TOKEN_TYPE_PERIOD)
 	chartok(',', TOKEN_TYPE_COMMA)
 	chartok('(', TOKEN_TYPE_OPENPAREN)
 	chartok(')', TOKEN_TYPE_CLOSEPAREN)
@@ -101,49 +170,92 @@ static void stream_read_single_token(m_stream *stream, m_token *tok)
 		return;
 	}
 
+	strvec_init(&strvec);
+
 	// String
 	if (ch == '"')
 	{
-		char *buf = stream->tmpbuf;
-		size_t buflen = sizeof(stream->tmpbuf);
 
-		int length = 0;
 		ch = stream_read_char(stream);
 		while (ch != '"' && ch != EOF)
 		{
-			if (length >= buflen)
-			{
-				buflen *= 2;
-				if (buf == stream->tmpbuf)
-					buf = malloc(buflen);
-				else
-					buf = realloc(buf, buflen);
-			}
-			buf[length++] = ch;
+			strvec_append(&strvec, ch);
 			ch = stream_read_char(stream);
 		}
 
 		if (ch == EOF)
 		{
+			free(strvec.vec);
 			tok->type = TOKEN_TYPE_ERROR;
-			char str[] = "Reached EOF while parsing string.";
-			m_token_set_content(tok, str, sizeof(str));
-			if (buf != stream->tmpbuf)
-				free(buf);
+			tok->content.str = "Reached EOF while parsing string.";
 			return;
 		}
 
 		tok->type = TOKEN_TYPE_STRING;
-		m_token_set_content(tok, buf, length);
-		if (buf != stream->tmpbuf)
-			free(buf);
+		tok->content.str = strvec.vec;
+		stream_allocs_append(stream, tok->content.str);
 
 		stream_read_char(stream);
 
 		return;
 	}
 
-	tok->type = TOKEN_TYPE_NONE;
+	// Number
+	if (isdigit(ch))
+	{
+		int haspoint = 0;
+		do
+		{
+			if (ch == '.')
+				haspoint = 1;
+
+			strvec_append(&strvec, ch);
+			ch = stream_read_char(stream);
+		} while (isdigit(ch) || (ch == '.' && !haspoint));
+
+		tok->type = TOKEN_TYPE_NUMBER;
+		tok->content.str = strvec.vec;
+		stream_allocs_append(stream, tok->content.str);
+
+		return;
+	}
+
+	// Typename
+	if (ch == '\'')
+	{
+		ch = stream_read_char(stream);
+
+		while (isname(ch))
+		{
+			strvec_append(&strvec, ch);
+			ch = stream_read_char(stream);
+		}
+
+		tok->type = TOKEN_TYPE_TYPENAME;
+		tok->content.str = strvec.vec;
+		stream_allocs_append(stream, tok->content.str);
+
+		return;
+	}
+
+	// Name
+	if (isname(ch))
+	{
+		do
+		{
+			strvec_append(&strvec, ch);
+			ch = stream_read_char(stream);
+		} while (isname(ch));
+
+		tok->type = TOKEN_TYPE_NAME;
+		tok->content.str = strvec.vec;
+		stream_allocs_append(stream, tok->content.str);
+
+		return;
+	}
+
+	tok->type = TOKEN_TYPE_ERROR;
+	tok->content.str = "Unexpected character.";
 }
 
 static void stream_init(m_stream *stream)
@@ -152,6 +264,9 @@ static void stream_init(m_stream *stream)
 	stream->column = 1;
 	stream->character = 0;
 	stream->indents = 0;
+	stream->allocs.vec = NULL;
+	stream->allocs.size = 0;
+	stream->allocs.length = 0;
 
 	memset(stream->nextchar, 0, sizeof(stream->nextchar));
 	memset(stream->nexttoken, 0, sizeof(stream->nexttoken));
@@ -181,20 +296,90 @@ void m_stream_init_file(m_stream *stream, FILE *f)
 	stream_init(stream);
 }
 
-void m_stream_free(m_stream *stream)
-{
-	for (int i = 0; i < STREAM_TOKEN_LOOKAHEAD; ++i)
-		m_token_unref(&stream->nexttoken[i]);
-}
-
 void m_stream_read_token(m_stream *stream)
 {
 	m_token nxt;
 	stream_read_single_token(stream, &nxt);
+	if (nxt.type == TOKEN_TYPE_ERROR)
+	{
+		ERRORSTART(&nxt);
+		ERRORCONT("%s", nxt.content.str);
+		ERROREND();
+	}
 
-	m_token_unref(&stream->nexttoken[0]);
 	for (int i = STREAM_TOKEN_LOOKAHEAD - 2; i >= 0; --i)
 		stream->nexttoken[i] = stream->nexttoken[i + 1];
 	stream->nexttoken[STREAM_CHAR_LOOKAHEAD - 1] = nxt;
-	stream->token = &stream->nexttoken[0];;
+	stream->token = &stream->nexttoken[0];
+}
+
+void m_stream_free(m_stream *stream)
+{
+	for (size_t i = 0; i < stream->allocs.length; ++i)
+		free(stream->allocs.vec[i]);
+
+	free(stream->allocs.vec);
+}
+
+int m_stream_skip(m_stream *stream, m_token_type type)
+{
+	if (stream->token->type == type)
+	{
+		m_stream_read_token(stream);
+		return 0;
+	}
+	else
+	{
+		ERRORSTART(stream->token);
+		ERRORCONT("Got %s token, expected %s token.",
+			m_token_type_name(type),
+			m_token_type_name(stream->token->type));
+		ERROREND();
+		return -1;
+	}
+}
+
+void m_stream_optional(m_stream *stream, m_token_type type)
+{
+	if (stream->token->type == type)
+		m_stream_read_token(stream);
+}
+
+int m_stream_skip_any(m_stream *stream, m_token_type types[])
+{
+	int valid = 0;
+	m_token_type *t = types;
+	while (*t != 0)
+	{
+		if (stream->token->type == *t)
+		{
+			valid = 1;
+			break;
+		}
+		t += 1;
+	}
+
+	if (valid)
+	{
+		m_stream_read_token(stream);
+		return 0;
+	}
+	else
+	{
+		ERRORSTART(stream->token);
+		ERRORCONT("Got %s token, expected one of ",
+			m_token_type_name(stream->token->type));
+		t = types;
+		while (*t != 0)
+		{
+			if (t == types)
+				ERRORCONT("%s token",
+					m_token_type_name(*t));
+			else
+				ERRORCONT(", %s token",
+					m_token_type_name(*t));
+			t += 1;
+		}
+		return -1;
+	}
 }
