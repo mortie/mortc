@@ -28,7 +28,7 @@ void test_stream()
 	}
 
 	it("reads a string of tokens") {
-		char *str = "\"hello\" () whats-up";
+		char *str = "\"hello\" () whats-up 'tokentype";
 		m_stream s;
 		m_stream_init_str(&s, str);
 
@@ -44,6 +44,10 @@ void test_stream()
 		m_stream_read_token(&s);
 		assertint(s.token->type, TOKEN_TYPE_NAME);
 		assertstr(s.token->content.str, "whats-up");
+
+		m_stream_read_token(&s);
+		assertint(s.token->type, TOKEN_TYPE_TYPENAME);
+		assertstr(s.token->content.str, "tokentype");
 
 		m_stream_read_token(&s);
 		assertint(s.token->type, TOKEN_TYPE_EOF);

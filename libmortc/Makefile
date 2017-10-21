@@ -4,7 +4,8 @@ SRC = $(shell find src -name '*.c')
 OBJ = $(patsubst src/%.c,obj/%.o,$(SRC))
 HDR = $(shell find include -name '*.h')
 
-CFLAGS ?= -g
+CFLAGS ?= -g -Wall -Wextra
+VGFLAGS ?= --quiet --leak-check=full --show-leak-kinds=all --track-origins=yes
 
 libmortc.so: $(OBJ) $(HDR)
 	$(CC) -shared -fPIC -Iinclude -o $@ $(OBJ)
@@ -19,7 +20,7 @@ install:
 
 test: libmortc.so
 	@$(MAKE) -C test >/dev/null
-	cd test && valgrind --quiet --leak-check=full --show-leak-kinds=all ./test
+	cd test && valgrind $(VGFLAGS) ./test
 
 clean:
 	rm -f libmortc.so

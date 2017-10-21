@@ -31,14 +31,17 @@ typedef struct m_stream
 	m_token nexttoken[STREAM_TOKEN_LOOKAHEAD];
 	m_token *token;
 
-	// Temporary buffer for token content
-	char tmpbuf[512];
+	struct {
+		void **vec;
+		size_t size;
+		size_t length;
+	} allocs;
 } m_stream;
 
 void m_stream_init_str(m_stream *stream, char *str);
 void m_stream_init_file(m_stream *stream, FILE *f);
-void m_stream_free(m_stream *stream);
 void m_stream_read_token(m_stream *stream);
+void m_stream_free(m_stream *stream);
 
 // Skip a token if it's of the desired type.
 // Return 0, or -1 on error.
