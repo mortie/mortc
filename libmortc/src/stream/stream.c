@@ -72,28 +72,38 @@ static void stream_allocs_append(m_stream *stream, void *ptr)
 
 static int stream_read_char(m_stream *stream)
 {
-	if (stream->nextchar[0] == EOF)
+	if (stream->ch == EOF)
 		return EOF;
 
 	int nxt;
-	if (stream->type == STREAM_TYPE_STRING)
+	if (stream->reached_eof)
+	{
+		nxt = EOF;
+	}
+	else if (stream->type == STREAM_TYPE_STRING)
 	{
 		nxt = stream->input.str[stream->character];
 		if (nxt == 0)
+		{
+			stream->reached_eof = 1;
 			nxt = EOF;
+		}
 	}
 	else
 	{
 		nxt = fgetc(stream->input.f);
+		if (nxt == EOF)
+			stream->reached_eof = 1;
 	}
 
 	stream->character += 1;
 
-	for (int i = STREAM_CHAR_LOOKAHEAD - 2; i >= 0; --i)
+	stream->ch = stream->nextchar[0];
+	for (int i = STREAM_CHAR_LOOKAHEAD - 1; i > 0; --i)
 		stream->nextchar[i] = stream->nextchar[i + 1];
 	stream->nextchar[STREAM_CHAR_LOOKAHEAD - 1] = nxt;
 
-	return stream->nextchar[0];
+	return stream->ch;
 }
 
 static void stream_read_single_token(m_stream *stream, m_token *tok)
@@ -102,7 +112,7 @@ static void stream_read_single_token(m_stream *stream, m_token *tok)
 
 	struct strvec strvec;
 
-	int ch = stream->nextchar[0];
+	int ch = stream->ch;
 	tok->line = stream->line;
 	tok->column = stream->column;
 
@@ -122,7 +132,7 @@ static void stream_read_single_token(m_stream *stream, m_token *tok)
 	// ':', ':=', '::'
 	if (ch == ':')
 	{
-		int nxt = stream->nextchar[1];
+		int nxt = stream->nextchar[0];
 		if (nxt == ':')
 		{
 			tok->type = TOKEN_TYPE_DBLCOLON;
@@ -263,6 +273,7 @@ static void stream_init(m_stream *stream)
 	stream->line = 1;
 	stream->column = 1;
 	stream->character = 0;
+	stream->reached_eof = 0;
 	stream->indents = 0;
 	stream->allocs.vec = NULL;
 	stream->allocs.size = 0;
@@ -271,12 +282,12 @@ static void stream_init(m_stream *stream)
 	memset(stream->nextchar, 0, sizeof(stream->nextchar));
 	memset(stream->nexttoken, 0, sizeof(stream->nexttoken));
 
-	for (int i = 0; i < STREAM_CHAR_LOOKAHEAD; ++i)
+	stream->ch = 1;
+	for (int i = 0; i < STREAM_CHAR_LOOKAHEAD + 1; ++i)
 		stream_read_char(stream);
 
-	for (int i = 0; i < STREAM_TOKEN_LOOKAHEAD; ++i)
-		m_token_init(&stream->nexttoken[i]);
-	for (int i = 0; i < STREAM_TOKEN_LOOKAHEAD; ++i)
+	m_token_init(&stream->token);
+	for (int i = 0; i < STREAM_TOKEN_LOOKAHEAD + 1; ++i)
 		m_stream_read_token(stream);
 }
 
@@ -307,10 +318,10 @@ void m_stream_read_token(m_stream *stream)
 		ERROREND();
 	}
 
-	for (int i = STREAM_TOKEN_LOOKAHEAD - 2; i >= 0; --i)
+	stream->token = stream->nexttoken[0];
+	for (int i = STREAM_TOKEN_LOOKAHEAD - 1; i > 0; --i)
 		stream->nexttoken[i] = stream->nexttoken[i + 1];
 	stream->nexttoken[STREAM_CHAR_LOOKAHEAD - 1] = nxt;
-	stream->token = &stream->nexttoken[0];
 }
 
 void m_stream_free(m_stream *stream)
@@ -323,17 +334,17 @@ void m_stream_free(m_stream *stream)
 
 int m_stream_skip(m_stream *stream, m_token_type type)
 {
-	if (stream->token->type == type)
+	if (stream->token.type == type)
 	{
 		m_stream_read_token(stream);
 		return 0;
 	}
 	else
 	{
-		ERRORSTART(stream->token);
+		ERRORSTART(&stream->token);
 		ERRORCONT("Got %s token, expected %s token.",
 			m_token_type_name(type),
-			m_token_type_name(stream->token->type));
+			m_token_type_name(stream->token.type));
 		ERROREND();
 		return -1;
 	}
@@ -341,7 +352,7 @@ int m_stream_skip(m_stream *stream, m_token_type type)
 
 void m_stream_optional(m_stream *stream, m_token_type type)
 {
-	if (stream->token->type == type)
+	if (stream->token.type == type)
 		m_stream_read_token(stream);
 }
 
@@ -351,7 +362,7 @@ int m_stream_skip_any(m_stream *stream, m_token_type types[])
 	m_token_type *t = types;
 	while (*t != 0)
 	{
-		if (stream->token->type == *t)
+		if (stream->token.type == *t)
 		{
 			valid = 1;
 			break;
@@ -366,9 +377,9 @@ int m_stream_skip_any(m_stream *stream, m_token_type types[])
 	}
 	else
 	{
-		ERRORSTART(stream->token);
+		ERRORSTART(&stream->token);
 		ERRORCONT("Got %s token, expected one of ",
-			m_token_type_name(stream->token->type));
+			m_token_type_name(stream->token.type));
 		t = types;
 		while (*t != 0)
 		{
@@ -380,6 +391,7 @@ int m_stream_skip_any(m_stream *stream, m_token_type types[])
 					m_token_type_name(*t));
 			t += 1;
 		}
+		ERROREND();
 		return -1;
 	}
 }

@@ -87,7 +87,7 @@ void _test_run(char *name, void (*fun)());
 			fail("Expected " #a " to equal " #b ", got NULL"); \
 		} else if (strcmp(str, (b)) != 0) { \
 			fail("Expected " #a " to equal " #b \
-				", got '%s'", str); \
+				", got \"%s\"", str); \
 		} \
 	} while (0)
 

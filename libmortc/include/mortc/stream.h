@@ -5,8 +5,8 @@
 
 #include <stdio.h>
 
-#define STREAM_CHAR_LOOKAHEAD 2
-#define STREAM_TOKEN_LOOKAHEAD 2
+#define STREAM_CHAR_LOOKAHEAD 1
+#define STREAM_TOKEN_LOOKAHEAD 1
 
 enum m_stream_type
 {
@@ -19,6 +19,7 @@ typedef struct m_stream
 	int line;
 	int column;
 	size_t character;
+	int reached_eof;
 	int indents;
 
 	enum m_stream_type type;
@@ -28,8 +29,10 @@ typedef struct m_stream
 	} input;
 
 	int nextchar[STREAM_CHAR_LOOKAHEAD];
+	int ch;
+
 	m_token nexttoken[STREAM_TOKEN_LOOKAHEAD];
-	m_token *token;
+	m_token token;
 
 	struct {
 		void **vec;
