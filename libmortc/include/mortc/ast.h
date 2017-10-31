@@ -12,7 +12,7 @@
  * m_ast_*_parse.
  */
 
-// Forward declarationi
+// Forward declarations
 typedef struct m_ast_expr_number m_ast_expr_number;
 typedef struct m_ast_expr_string m_ast_expr_string;
 typedef struct m_ast_expr_name m_ast_expr_name;
