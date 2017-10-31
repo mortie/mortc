@@ -100,4 +100,14 @@ void _test_run(char *name, void (*fun)());
 		} \
 	} while (0)
 
+#define assertdbl(a, b) \
+	do { \
+		if (_test.done) break; \
+		double num = (a); \
+		if (num != (b)) { \
+			fail("Expected " #a " to equal " #b \
+				", got %f", num); \
+		} \
+	} while (0)
+
 #endif

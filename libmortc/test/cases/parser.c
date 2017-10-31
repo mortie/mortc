@@ -3,13 +3,49 @@
 
 #include <stdio.h>
 
+#define INITEXPR(ast, str) \
+		m_stream s; \
+		m_stream_init_str(&s, str); \
+		m_ast_expr ast; \
+		assertint(m_ast_expr_parse(&ast, &s), 0)
+
+#define END(ast) \
+	m_ast_expr_free(&ast); \
+	m_stream_free(&s)
+
 void test_parser()
 {
+	it("parses string literal expressions") {
+		INITEXPR(ast, "\"hello world\"");
+
+		assertint(ast.tag, AST_EXPR_STRING);
+		assertstr(ast.expr.string.str, "hello world");
+
+		END(ast);
+	}
+
+	it("parses number expressions with integers") {
+		INITEXPR(ast, "1337");
+
+		assertint(ast.tag, AST_EXPR_NUMBER);
+		assertint(ast.expr.number.tag, AST_EXPR_NUMBER_INTEGER);
+		assertint(ast.expr.number.n.i, 1337);
+
+		END(ast);
+	}
+
+	it("parses number expressions with doubles") {
+		INITEXPR(ast, "1337.5");
+
+		assertint(ast.tag, AST_EXPR_NUMBER);
+		assertint(ast.expr.number.tag, AST_EXPR_NUMBER_DOUBLE);
+		assertdbl(ast.expr.number.n.d, 1337.5);
+
+		END(ast);
+	}
+
 	it("parses name expressions") {
-		m_stream s;
-		m_stream_init_str(&s, "foo");
-		m_ast_expr ast;
-		assertint(m_ast_expr_parse(&ast, &s), 0);
+		INITEXPR(ast, "foo");
 
 		assertint(ast.tag, AST_EXPR_NAME);
 		assertstr(ast.expr.name.name, "foo");
@@ -19,25 +55,18 @@ void test_parser()
 	}
 
 	it("parses func call expressions with no arguments") {
-		m_stream s;
-		m_stream_init_str(&s, "(foobar)");
-		m_ast_expr ast;
-		assertint(m_ast_expr_parse(&ast, &s), 0);
+		INITEXPR(ast, "(foobar)");
 
 		assertint(ast.tag, AST_EXPR_FUNC_CALL);
 		m_ast_expr_func_call fc = ast.expr.func_call;
 		assertstr(fc.name, "foobar");
 		assertint(fc.args_len, 0);
 
-		m_ast_expr_free(&ast);
-		m_stream_free(&s);
+		END(ast);
 	}
 
 	it("parses func call expressions with arguments") {
-		m_stream s;
-		m_stream_init_str(&s, "foo x y z");
-		m_ast_expr ast;
-		assertint(m_ast_expr_parse(&ast, &s), 0);
+		INITEXPR(ast, "foo x y z");
 
 		assertint(ast.tag, AST_EXPR_FUNC_CALL);
 		m_ast_expr_func_call fc = ast.expr.func_call;
@@ -51,15 +80,11 @@ void test_parser()
 		assertint(fc.args[2].tag, AST_EXPR_NAME);
 		assertstr(fc.args[2].expr.name.name, "z");
 
-		m_ast_expr_free(&ast);
-		m_stream_free(&s);
+		END(ast);
 	}
 
 	it("parses func call expressions with arguments in parens") {
-		m_stream s;
-		m_stream_init_str(&s, "(foo x y z)");
-		m_ast_expr ast;
-		assertint(m_ast_expr_parse(&ast, &s), 0);
+		INITEXPR(ast, "(foo x y z)");
 
 		assertint(ast.tag, AST_EXPR_FUNC_CALL);
 		m_ast_expr_func_call fc = ast.expr.func_call;
@@ -73,15 +98,11 @@ void test_parser()
 		assertint(fc.args[2].tag, AST_EXPR_NAME);
 		assertstr(fc.args[2].expr.name.name, "z");
 
-		m_ast_expr_free(&ast);
-		m_stream_free(&s);
+		END(ast);
 	}
 
 	it("parses nested func calls") {
-		m_stream s;
-		m_stream_init_str(&s, "foo (bar x) (baz (x))");
-		m_ast_expr ast;
-		assertint(m_ast_expr_parse(&ast, &s), 0);
+		INITEXPR(ast, "foo (bar x) (baz (x))");
 
 		assertint(ast.tag, AST_EXPR_FUNC_CALL);
 		m_ast_expr_func_call fc = ast.expr.func_call;
@@ -103,7 +124,27 @@ void test_parser()
 		assertstr(arg1.args[0].expr.func_call.name, "x");
 		assertint(arg1.args[0].expr.func_call.args_len, 0);
 
-		m_ast_expr_free(&ast);
-		m_stream_free(&s);
+		END(ast);
+	}
+
+	it("parses function calls with different argument types") {
+		INITEXPR(ast, "foo 10 \"hello\" there");
+
+		assertint(ast.tag, AST_EXPR_FUNC_CALL);
+		m_ast_expr_func_call fc = ast.expr.func_call;
+		assertstr(fc.name, "foo");
+		assertint(fc.args_len, 3);
+
+		assertint(fc.args[0].tag, AST_EXPR_NUMBER);
+		assertint(fc.args[0].expr.number.tag, AST_EXPR_NUMBER_INTEGER);
+		assertint(fc.args[0].expr.number.n.i, 10);
+
+		assertint(fc.args[1].tag, AST_EXPR_STRING);
+		assertstr(fc.args[1].expr.string.str, "hello");
+
+		assertint(fc.args[2].tag, AST_EXPR_NAME);
+		assertstr(fc.args[2].expr.name.name, "there");
+
+		END(ast);
 	}
 }

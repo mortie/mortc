@@ -12,7 +12,9 @@
  * m_ast_*_parse.
  */
 
-// Forward declarations
+// Forward declarationi
+typedef struct m_ast_expr_number m_ast_expr_number;
+typedef struct m_ast_expr_string m_ast_expr_string;
 typedef struct m_ast_expr_name m_ast_expr_name;
 typedef struct m_ast_expr_group m_ast_expr_group;
 typedef struct m_ast_expr_func_call m_ast_expr_func_call;
@@ -24,6 +26,39 @@ typedef struct m_ast_vardecl m_ast_vardecl;
 typedef struct m_ast_funcdecl m_ast_funcdecl;
 typedef struct m_ast_decl m_ast_decl;
 typedef struct m_ast_file m_ast_file;
+
+/*
+ * Number Expression
+ * <string>
+ */
+
+typedef struct m_ast_expr_number
+{
+	union {
+		int i;
+		double d;
+	} n;
+	enum {
+		AST_EXPR_NUMBER_INTEGER,
+		AST_EXPR_NUMBER_DOUBLE
+	} tag;
+} m_ast_expr_number;
+
+int m_ast_expr_number_parse(m_ast_expr_number *ast, m_stream *stream);
+void m_ast_expr_number_free(m_ast_expr_number *ast);
+
+/*
+ * String Expression
+ * <string>
+ */
+
+typedef struct m_ast_expr_string
+{
+	char *str;
+} m_ast_expr_string;
+
+int m_ast_expr_string_literal_parse(m_ast_expr_name *ast, m_stream *stream);
+void m_ast_expr_string_literal_free(m_ast_expr_name *ast);
 
 /*
  * Name Expression
@@ -40,7 +75,7 @@ void m_ast_expr_name_free(m_ast_expr_name *ast);
 
 /*
  * Func Call Expression
- * '('? <name> (<name> | <func call>)* ')'?
+ * '('? <name> (<number> | <string> | <name> | <func call>)* ')'?
  */
 
 typedef struct m_ast_expr_func_call
@@ -63,12 +98,16 @@ typedef struct m_ast_expr
 {
 	union
 	{
+		m_ast_expr_string string;
+		m_ast_expr_number number;
 		m_ast_expr_name name;
 		m_ast_expr_func_call func_call;
 	} expr;
 
 	enum
 	{
+		AST_EXPR_STRING,
+		AST_EXPR_NUMBER,
 		AST_EXPR_NAME,
 		AST_EXPR_FUNC_CALL,
 		AST_EXPR_NONE
