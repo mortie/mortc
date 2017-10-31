@@ -332,17 +332,16 @@ void m_stream_free(m_stream *stream)
 	free(stream->allocs.vec);
 }
 
-int m_stream_skip(m_stream *stream, m_token_type type)
+int m_stream_assert(m_stream *stream, m_token_type type)
 {
 	if (stream->token.type == type)
 	{
-		m_stream_read_token(stream);
 		return 0;
 	}
 	else
 	{
 		ERRORSTART(&stream->token);
-		ERRORCONT("Got %s token, expected %s token.",
+		ERRORCONT("Got '%s' token, expected '%s'.",
 			m_token_type_name(type),
 			m_token_type_name(stream->token.type));
 		ERROREND();
@@ -350,17 +349,20 @@ int m_stream_skip(m_stream *stream, m_token_type type)
 	}
 }
 
-void m_stream_optional(m_stream *stream, m_token_type type)
+int m_stream_skip(m_stream *stream, m_token_type type)
 {
-	if (stream->token.type == type)
+	int ret = m_stream_assert(stream, type);
+	if (ret >= 0)
 		m_stream_read_token(stream);
+
+	return ret;
 }
 
-int m_stream_skip_any(m_stream *stream, m_token_type types[])
+int m_stream_assert_any(m_stream *stream, m_token_type types[])
 {
 	int valid = 0;
 	m_token_type *t = types;
-	while (*t != 0)
+	while (*t != TOKEN_TYPE_NONE)
 	{
 		if (stream->token.type == *t)
 		{
@@ -372,26 +374,41 @@ int m_stream_skip_any(m_stream *stream, m_token_type types[])
 
 	if (valid)
 	{
-		m_stream_read_token(stream);
 		return 0;
 	}
 	else
 	{
 		ERRORSTART(&stream->token);
-		ERRORCONT("Got %s token, expected one of ",
+		ERRORCONT("Got '%s' token, expected ",
 			m_token_type_name(stream->token.type));
 		t = types;
-		while (*t != 0)
+		while (*t != TOKEN_TYPE_NONE)
 		{
+			const char *name = m_token_type_name(*t);
 			if (t == types)
-				ERRORCONT("%s token",
-					m_token_type_name(*t));
+				ERRORCONT("'%s'", name);
+			else if (*(t + 1) == TOKEN_TYPE_NONE)
+				ERRORCONT(" or '%s'.", name);
 			else
-				ERRORCONT(", %s token",
-					m_token_type_name(*t));
+				ERRORCONT(", '%s'", name);
 			t += 1;
 		}
 		ERROREND();
 		return -1;
 	}
+}
+
+int m_stream_skip_any(m_stream *stream, m_token_type types[])
+{
+	int ret = m_stream_assert_any(stream, types);
+	if (ret >= 0)
+		m_stream_read_token(stream);
+
+	return ret;
+}
+
+void m_stream_optional(m_stream *stream, m_token_type type)
+{
+	if (stream->token.type == type)
+		m_stream_read_token(stream);
 }

@@ -22,7 +22,7 @@ void _test_run(char *name, void (*fun)())
 
 	fprintf(stderr,
 		"\n" TEST_COLOR_BOLD "Passed %i/%i tests (%dms)."
-		TEST_COLOR_RESET "\n\n",
+		TEST_COLOR_RESET "\n",
 		_test.npassed, _test.ntests, msec);
 }
 

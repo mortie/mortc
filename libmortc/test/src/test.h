@@ -59,8 +59,6 @@ void _test_run(char *name, void (*fun)());
 
 #define fail(...) \
 	do { \
-		if (_test.done) \
-			break; \
 		fprintf(stderr, \
 			TEST_COLOR_BOLD TEST_COLOR_FAIL "✕ " \
 			TEST_COLOR_RESET TEST_COLOR_FAIL "Failed: " \
@@ -82,6 +80,7 @@ void _test_run(char *name, void (*fun)());
 
 #define assertstr(a, b) \
 	do { \
+		if (_test.done) break; \
 		char *str = (a); \
 		if (str == NULL) {\
 			fail("Expected " #a " to equal " #b ", got NULL"); \
@@ -93,6 +92,7 @@ void _test_run(char *name, void (*fun)());
 
 #define assertint(a, b) \
 	do { \
+		if (_test.done) break; \
 		int num = (a); \
 		if (num != (b)) { \
 			fail("Expected " #a " to equal " #b \

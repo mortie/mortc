@@ -4,7 +4,7 @@ SRC = $(shell find src -name '*.c')
 OBJ = $(patsubst src/%.c,obj/%.o,$(SRC))
 HDR = $(shell find include -name '*.h')
 
-CFLAGS ?= -g -Wall -Wextra
+CFLAGS ?= -g -Wall -Wextra -Wno-unused-parameter
 VGFLAGS ?= --quiet --leak-check=full --show-leak-kinds=all --track-origins=yes
 
 libmortc.so: $(OBJ) $(HDR)
