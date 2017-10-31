@@ -34,11 +34,14 @@ typedef struct m_ast_file m_ast_file;
 
 typedef struct m_ast_expr_number
 {
-	union {
+	union
+	{
 		int i;
 		double d;
 	} n;
-	enum {
+
+	enum
+	{
 		AST_EXPR_NUMBER_INTEGER,
 		AST_EXPR_NUMBER_DOUBLE
 	} tag;
@@ -206,12 +209,14 @@ void m_ast_funcdecl_free(m_ast_funcdecl *ast);
 
 typedef struct m_ast_decl
 {
-	union {
+	union
+	{
 		m_ast_vardecl vardecl;
 		m_ast_funcdecl funcdecl;
 	} decl;
 
-	enum {
+	enum
+	{
 		AST_DECL_FUNCDECL,
 		AST_DECL_VARDECL
 	} tag;
