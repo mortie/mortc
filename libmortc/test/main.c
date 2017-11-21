@@ -7,6 +7,5 @@ int main()
 {
 	run(test_stream);
 	run(test_parser);
-
-	return test_exit_status;
+	return test_suite_done();
 }

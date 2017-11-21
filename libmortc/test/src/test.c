@@ -1,45 +1,85 @@
 #include "test.h"
 
-struct test _test;
+struct test _local_test;
 
-int test_exit_status = 0;
+struct test _global_test = {
+	.description = "All Tests",
+	.done = 0,
+	.ntests = 0,
+	.npassed = 0,
+	.file = NULL,
+	.line = 0,
+	.starttime = -1
+};
 
-void _test_run(char *name, void (*fun)())
+int _test_exit_status = 0;
+int _test_indents = -1;
+
+void _local_test_run(char *name, void (*fun)())
 {
-	_test.done = 1;
-	_test.ntests = 0;
-	_test.npassed = 0;
-	_test.starttime = 0;
+	_test_indents += 1;
 
-	_test.ntests = 0;
-	_test.npassed = 0;
-	printf("\n" TEST_COLOR_BOLD "Running %s:" TEST_COLOR_RESET "\n\n", name);
+	_TEST_INDENT(indent, _test_indents);
 
-	int starttime = clock();
+	_local_test.done = 1;
+	_local_test.ntests = 0;
+	_local_test.npassed = 0;
+	_local_test.starttime = 0;
+
+	_local_test.ntests = 0;
+	_local_test.npassed = 0;
+	printf("\n" TEST_COLOR_BOLD "%sRunning %s:" TEST_COLOR_RESET "\n",
+		indent, name);
+
+	clock_t starttime = clock();
+	if (_global_test.starttime == -1)
+		_global_test.starttime = starttime;
+
 	(*fun)();
 	int msec = (clock() - starttime) * 1000 / CLOCKS_PER_SEC;
-	_test_done();
+	_local_test_done();
 
 	fprintf(stderr,
-		"\n" TEST_COLOR_BOLD "Passed %i/%i tests (%dms)."
+		"\n" TEST_COLOR_BOLD "%s%s: Passed %i/%i tests (%dms)."
 		TEST_COLOR_RESET "\n",
-		_test.npassed, _test.ntests, msec);
+		indent, name, _local_test.npassed,
+		_local_test.ntests, msec);
+
+	_global_test.ntests += _local_test.ntests;
+	_global_test.npassed += _local_test.npassed;
+
+	_test_indents -= 1;
 }
 
-void _test_done()
+void _local_test_done()
 {
-	if (_test.done)
+	if (_local_test.done)
 		return;
 
-	_test.done = 1;
-	_test.ntests += 1;
-	_test.npassed += 1;
+	_local_test.done = 1;
+	_local_test.ntests += 1;
+	_local_test.npassed += 1;
 
-	int msec = (clock() - _test.starttime) * 1000 / CLOCKS_PER_SEC; \
+	int msec = (clock() - _local_test.starttime) * 1000 / CLOCKS_PER_SEC;
+
+	_TEST_INDENT(indent, _test_indents);
+
 	fprintf(stderr,
-		TEST_COLOR_BOLD TEST_COLOR_SUCCESS "✓ "
+		TEST_COLOR_BOLD TEST_COLOR_SUCCESS "%s✓ "
 		TEST_COLOR_RESET TEST_COLOR_SUCCESS "Success: "
 		TEST_COLOR_RESET TEST_COLOR_DESC "%s "
 		TEST_COLOR_RESET "(%dms)\n",
-		_test.description, msec);
+		indent, _local_test.description, msec);
+}
+
+int test_suite_done()
+{
+	int msec = (clock() - _global_test.starttime) * 1000 / CLOCKS_PER_SEC;
+
+	fprintf(stderr,
+		"\n" TEST_COLOR_BOLD "Total: Passed %i/%i tests (%dms)."
+		TEST_COLOR_RESET "\n",
+		_global_test.npassed, _global_test.ntests, msec);
+
+	return _test_exit_status;
 }

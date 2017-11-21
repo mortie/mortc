@@ -13,7 +13,7 @@
 	m_ast_expr_free(&ast); \
 	m_stream_free(&s)
 
-void test_parser()
+void test_expressions()
 {
 	it("parses string literal expressions") {
 		INITEXPR(ast, "\"hello world\"");
@@ -147,4 +147,9 @@ void test_parser()
 
 		END(ast);
 	}
+}
+
+void test_parser()
+{
+	run(test_expressions);
 }
