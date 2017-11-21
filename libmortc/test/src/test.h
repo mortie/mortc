@@ -75,8 +75,8 @@ int test_suite_done();
 		fprintf(stderr, \
 			TEST_COLOR_BOLD TEST_COLOR_FAIL "%s✕ " \
 			TEST_COLOR_RESET TEST_COLOR_FAIL "Failed: " \
-			TEST_COLOR_RESET TEST_COLOR_DESC "%s: " \
-			TEST_COLOR_RESET, indent, _local_test.description); \
+			TEST_COLOR_RESET TEST_COLOR_DESC "%s:\n%s    " \
+			TEST_COLOR_RESET, indent, _local_test.description, indent); \
 		fprintf(stderr, __VA_ARGS__); \
 		fprintf(stderr, "\n%s    at %s:%i\n", indent, __FILE__, __LINE__); \
 		_local_test.done = 1; \

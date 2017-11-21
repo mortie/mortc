@@ -160,11 +160,11 @@ void test_expressions()
 void test_decls()
 {
 	it("parses basic type declaration") {
-		INITTYPEDECL(ast, "int");
+		INITTYPEDECL(ast, "String");
 
 		assertint(ast.parts_len, 1);
 		assertint(ast.parts[0].tag, AST_TYPEDECL_NAME);
-		assertstr(ast.parts[0].d.name, "int");
+		assertstr(ast.parts[0].d.name, "String");
 
 		ENDTYPEDECL(ast);
 	}
