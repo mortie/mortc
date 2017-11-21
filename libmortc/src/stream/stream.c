@@ -103,6 +103,11 @@ static int stream_read_char(m_stream *stream)
 		stream->nextchar[i] = stream->nextchar[i + 1];
 	stream->nextchar[STREAM_CHAR_LOOKAHEAD - 1] = nxt;
 
+	if (stream->ch == '\n')
+		stream->column = 0;
+	else if (stream->ch != 0)
+		stream->column += 1;
+
 	return stream->ch;
 }
 
@@ -271,18 +276,18 @@ static void stream_read_single_token(m_stream *stream, m_token *tok)
 static void stream_init(m_stream *stream)
 {
 	stream->line = 1;
-	stream->column = 1;
+	stream->column = 0;
 	stream->character = 0;
 	stream->reached_eof = 0;
 	stream->indents = 0;
 	stream->allocs.vec = NULL;
 	stream->allocs.size = 0;
 	stream->allocs.length = 0;
+	stream->ch = 0;
 
 	memset(stream->nextchar, 0, sizeof(stream->nextchar));
 	memset(stream->nexttoken, 0, sizeof(stream->nexttoken));
 
-	stream->ch = 1;
 	for (int i = 0; i < STREAM_CHAR_LOOKAHEAD + 1; ++i)
 		stream_read_char(stream);
 
