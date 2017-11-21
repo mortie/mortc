@@ -25,7 +25,7 @@ void _local_test_run(char *name, void (*fun)())
 
 	_TEST_INDENT(indent, _test_indents);
 
-	_local_test.done = 0;
+	_local_test.done = 1;
 	_local_test.ntests = 0;
 	_local_test.npassed = 0;
 	_local_test.starttime = 0;
