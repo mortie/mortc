@@ -4,13 +4,21 @@
 #include <stdio.h>
 
 #define INITEXPR(ast, str) \
-		m_stream s; \
-		m_stream_init_str(&s, str); \
-		m_ast_expr ast; \
-		assertint(m_ast_expr_parse(&ast, &s), 0)
-
-#define END(ast) \
+	m_stream s; \
+	m_stream_init_str(&s, str); \
+	m_ast_expr ast; \
+	assertint(m_ast_expr_parse(&ast, &s), 0)
+#define ENDEXPR(ast) \
 	m_ast_expr_free(&ast); \
+	m_stream_free(&s)
+
+#define INITTYPEDECL(ast, str) \
+	m_stream s; \
+	m_stream_init_str(&s, str); \
+	m_ast_typedecl ast; \
+	assertint(m_ast_typedecl_parse(&ast, &s), 0);
+#define ENDTYPEDECL(ast) \
+	m_ast_typedecl_free(&ast); \
 	m_stream_free(&s)
 
 void test_expressions()
@@ -21,7 +29,7 @@ void test_expressions()
 		assertint(ast.tag, AST_EXPR_STRING);
 		assertstr(ast.expr.string.str, "hello world");
 
-		END(ast);
+		ENDEXPR(ast);
 	}
 
 	it("parses number expressions with integers") {
@@ -31,7 +39,7 @@ void test_expressions()
 		assertint(ast.expr.number.tag, AST_EXPR_NUMBER_INTEGER);
 		assertint(ast.expr.number.n.i, 1337);
 
-		END(ast);
+		ENDEXPR(ast);
 	}
 
 	it("parses number expressions with doubles") {
@@ -41,7 +49,7 @@ void test_expressions()
 		assertint(ast.expr.number.tag, AST_EXPR_NUMBER_DOUBLE);
 		assertdbl(ast.expr.number.n.d, 1337.5);
 
-		END(ast);
+		ENDEXPR(ast);
 	}
 
 	it("parses name expressions") {
@@ -62,7 +70,7 @@ void test_expressions()
 		assertstr(fc.name, "foobar");
 		assertint(fc.args_len, 0);
 
-		END(ast);
+		ENDEXPR(ast);
 	}
 
 	it("parses func call expressions with arguments") {
@@ -80,7 +88,7 @@ void test_expressions()
 		assertint(fc.args[2].tag, AST_EXPR_NAME);
 		assertstr(fc.args[2].expr.name.name, "z");
 
-		END(ast);
+		ENDEXPR(ast);
 	}
 
 	it("parses func call expressions with arguments in parens") {
@@ -98,7 +106,7 @@ void test_expressions()
 		assertint(fc.args[2].tag, AST_EXPR_NAME);
 		assertstr(fc.args[2].expr.name.name, "z");
 
-		END(ast);
+		ENDEXPR(ast);
 	}
 
 	it("parses nested func calls") {
@@ -124,7 +132,7 @@ void test_expressions()
 		assertstr(arg1.args[0].expr.func_call.name, "x");
 		assertint(arg1.args[0].expr.func_call.args_len, 0);
 
-		END(ast);
+		ENDEXPR(ast);
 	}
 
 	it("parses function calls with different argument types") {
@@ -145,11 +153,67 @@ void test_expressions()
 		assertint(fc.args[2].tag, AST_EXPR_NAME);
 		assertstr(fc.args[2].expr.name.name, "there");
 
-		END(ast);
+		ENDEXPR(ast);
+	}
+}
+
+void test_decls()
+{
+	it("parses basic type declaration") {
+		INITTYPEDECL(ast, "int");
+
+		assertint(ast.parts_len, 1);
+		assertint(ast.parts[0].tag, AST_TYPEDECL_NAME);
+		assertstr(ast.parts[0].d.name, "int");
+
+		ENDTYPEDECL(ast);
+	}
+
+	it("parses basic type declarations with a type name") {
+		INITTYPEDECL(ast, "'a");
+
+		assertint(ast.parts_len, 1);
+		assertint(ast.parts[0].tag, AST_TYPEDECL_TYPENAME);
+		assertstr(ast.parts[0].d.tname, "a");
+
+		ENDTYPEDECL(ast);
+	}
+
+	it("parses multiple names in a declaration") {
+		INITTYPEDECL(ast, "String 'a Map");
+
+		assertint(ast.parts_len, 3);
+		assertint(ast.parts[0].tag, AST_TYPEDECL_NAME);
+		assertstr(ast.parts[0].d.name, "String");
+		assertint(ast.parts[1].tag, AST_TYPEDECL_TYPENAME);
+		assertstr(ast.parts[1].d.tname, "a");
+		assertint(ast.parts[2].tag, AST_TYPEDECL_NAME);
+		assertstr(ast.parts[2].d.name, "Map");
+
+		ENDTYPEDECL(ast);
+	}
+
+	it("parses nested type declarations") {
+		INITTYPEDECL(ast, "(String Vector) Vector");
+
+		assertint(ast.parts_len, 2);
+
+		assertint(ast.parts[0].tag, AST_TYPEDECL_NESTED);
+		assertint(ast.parts[0].d.decl->parts_len, 2);
+		assertint(ast.parts[0].d.decl->parts[0].tag, AST_TYPEDECL_NAME);
+		assertstr(ast.parts[0].d.decl->parts[0].d.name, "String");
+		assertint(ast.parts[0].d.decl->parts[1].tag, AST_TYPEDECL_NAME);
+		assertstr(ast.parts[0].d.decl->parts[1].d.name, "Vector");
+
+		assertint(ast.parts[1].tag, AST_TYPEDECL_NAME);
+		assertstr(ast.parts[1].d.name, "Vector");
+
+		ENDTYPEDECL(ast);
 	}
 }
 
 void test_parser()
 {
 	run(test_expressions);
+	run(test_decls);
 }

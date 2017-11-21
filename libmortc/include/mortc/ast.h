@@ -21,7 +21,7 @@ typedef struct m_ast_expr_func_call m_ast_expr_func_call;
 typedef struct m_ast_expr m_ast_expr;
 typedef struct m_ast_statm m_ast_statm;
 typedef struct m_ast_block m_ast_block;
-typedef struct m_ast_type m_ast_type;
+typedef struct m_ast_typedecl m_ast_typedecl;
 typedef struct m_ast_vardecl m_ast_vardecl;
 typedef struct m_ast_funcdecl m_ast_funcdecl;
 typedef struct m_ast_decl m_ast_decl;
@@ -157,16 +157,34 @@ void m_ast_block_free(m_ast_block *ast);
 
 /*
  * Type Declaration
- * <name>
+ * (<name> | <typename> | '(' <type declaration> ')')*
  */
 
-typedef struct m_ast_type
+struct m_ast_typedecl_part
 {
-	char *name;
-} m_ast_type;
+	union
+	{
+		char *name;
+		char *tname;
+		struct m_ast_typedecl *decl;
+	} d;
 
-int m_ast_typedecl_parse(m_ast_type *ast, m_stream *stream);
-void m_ast_typedecl_free(m_ast_type *ast);
+	enum
+	{
+		AST_TYPEDECL_NAME,
+		AST_TYPEDECL_TYPENAME,
+		AST_TYPEDECL_NESTED
+	} tag;
+};
+typedef struct m_ast_typedecl
+{
+	struct m_ast_typedecl_part *parts;
+	size_t parts_len;
+	size_t parts_size;
+} m_ast_typedecl;
+
+int m_ast_typedecl_parse(m_ast_typedecl *ast, m_stream *stream);
+void m_ast_typedecl_free(m_ast_typedecl *ast);
 
 /*
  * Variable Declaration
@@ -175,7 +193,7 @@ void m_ast_typedecl_free(m_ast_type *ast);
 
 typedef struct m_ast_vardecl
 {
-	m_ast_type type;
+	m_ast_typedecl type;
 	char *name;
 } m_ast_vardecl;
 
@@ -195,7 +213,7 @@ typedef struct m_ast_funcdecl
 	size_t args_len;
 	size_t args_size;
 
-	m_ast_type retval;
+	m_ast_typedecl retval;
 	m_ast_block block;
 } m_ast_funcdecl;
 
